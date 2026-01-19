@@ -57,8 +57,9 @@ jobs:
           load: true
           tags: ${{ env.TEST_TAG }}
 
-      - name: Test ${{ github.event.inputs.test }} for ${{ github.event.inputs.url }}
+      - name: Test ${{ github.event.inputs.test }} for ${{ github.event.inputs.url }} (with test names)
         run: |
+          # Run the Webperf test
           docker run ${{ env.TEST_TAG }} \
             python default.py \
               -t ${{ github.event.inputs.test }} \
@@ -69,6 +70,12 @@ jobs:
               --setting general.language=${{ github.event.inputs.language }} \
               -u ${{ github.event.inputs.url }} \
             | tee results.txt
+      
+          # Append the test names for the numbers used, in simple "2 : Name" format
+          echo -e "\n### Test names for run: ${{ github.event.inputs.test }}" >> results.txt
+          docker run ${{ env.TEST_TAG }} python default.py -t ? \
+            | grep -E "^(-t )?(${{ github.event.inputs.test//,/|}})" \
+            | sed -E 's/^-t ([0-9]+)\s+: (.+)/\1 : \2/' >> results.txt
 
       - name: Upload webperf results as artifact
         uses: actions/upload-artifact@v4
