@@ -57,16 +57,11 @@ jobs:
           load: true
           tags: ${{ env.TEST_TAG }}
 
-      - name: Test ${{ github.event.inputs.test }} for ${{ github.event.inputs.url }} (with test names)
+      - name: Run selected tests
         run: |
-          # Save test numbers in a variable
-          TEST_NUMBERS="${{ github.event.inputs.test }}"
-          TEST_NUMBERS_REGEX=$(echo "$TEST_NUMBERS" | sed 's/,/|/g')
-      
-          # Run the Webperf test
           docker run ${{ env.TEST_TAG }} \
             python default.py \
-              -t "$TEST_NUMBERS" \
+              -t ${{ github.event.inputs.test }} \
               -r \
               --setting general.review.details=${{ github.event.inputs.details }} \
               --setting general.review.data=${{ github.event.inputs.data }} \
@@ -74,16 +69,21 @@ jobs:
               --setting general.language=${{ github.event.inputs.language }} \
               -u ${{ github.event.inputs.url }} \
             | tee results.txt
-      
-          # Append the test names in "2 : Name" format
-          echo -e "\n### Test names for run: $TEST_NUMBERS" >> results.txt
-          docker run ${{ env.TEST_TAG }} python default.py -t ? \
-            | grep -E "^(-t )?($TEST_NUMBERS_REGEX)" \
-            | sed -E 's/^-t ([0-9]+)\s+: (.+)/\1 : \2/' >> results.txt
 
-      - name: Upload webperf results as artifact
+      - name: Get list of available tests
+        run: |
+          docker run ${{ env.TEST_TAG }} python default.py -t ? > available-tests.txt
+
+      - name: Upload test results as artifact
         uses: actions/upload-artifact@v4
         with:
           name: webperf-results
           path: results.txt
+          retention-days: 30
+
+      - name: Upload available tests as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: available-tests
+          path: available-tests.txt
           retention-days: 30
