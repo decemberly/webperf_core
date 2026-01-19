@@ -59,10 +59,14 @@ jobs:
 
       - name: Test ${{ github.event.inputs.test }} for ${{ github.event.inputs.url }} (with test names)
         run: |
+          # Save test numbers in a variable
+          TEST_NUMBERS="${{ github.event.inputs.test }}"
+          TEST_NUMBERS_REGEX=$(echo "$TEST_NUMBERS" | sed 's/,/|/g')
+      
           # Run the Webperf test
           docker run ${{ env.TEST_TAG }} \
             python default.py \
-              -t ${{ github.event.inputs.test }} \
+              -t "$TEST_NUMBERS" \
               -r \
               --setting general.review.details=${{ github.event.inputs.details }} \
               --setting general.review.data=${{ github.event.inputs.data }} \
@@ -71,10 +75,10 @@ jobs:
               -u ${{ github.event.inputs.url }} \
             | tee results.txt
       
-          # Append the test names for the numbers used, in simple "2 : Name" format
-          echo -e "\n### Test names for run: ${{ github.event.inputs.test }}" >> results.txt
+          # Append the test names in "2 : Name" format
+          echo -e "\n### Test names for run: $TEST_NUMBERS" >> results.txt
           docker run ${{ env.TEST_TAG }} python default.py -t ? \
-            | grep -E "^(-t )?(${{ github.event.inputs.test//,/|}})" \
+            | grep -E "^(-t )?($TEST_NUMBERS_REGEX)" \
             | sed -E 's/^-t ([0-9]+)\s+: (.+)/\1 : \2/' >> results.txt
 
       - name: Upload webperf results as artifact
